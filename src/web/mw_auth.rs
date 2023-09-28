@@ -1,3 +1,4 @@
+use crate::web::AUTH_TOKEN;
 use crate::{ctx::Ctx, model::ModelController, Error, Result};
 use async_trait::async_trait;
 use axum::{
@@ -8,15 +9,14 @@ use axum::{
 };
 use lazy_regex::regex_captures;
 use tower_cookies::{Cookie, Cookies};
-
-use crate::web::AUTH_TOKEN;
+use tracing::debug;
 
 pub async fn mw_require_auth<B>(
     ctx: Result<Ctx>,
     req: Request<B>,
     next: Next<B>,
 ) -> Result<Response> {
-    println!("->> {:<12} - mw_require_auth - {ctx:?}", "MIDDLEWARE");
+    debug!(" {:<12} - mw_require_auth - {ctx:?}", "MIDDLEWARE");
 
     ctx?;
 
@@ -29,7 +29,7 @@ pub async fn mw_ctx_resolver<B>(
     mut req: Request<B>,
     next: Next<B>,
 ) -> Result<Response> {
-    println!("->> {:<12} - mw_ctx_reslover", "MIDDLEWARE");
+    debug!(" {:<12} - mw_ctx_reslover", "MIDDLEWARE");
 
     let auth_token = cookies.get(AUTH_TOKEN).map(|c| c.value().to_string());
 
@@ -61,7 +61,7 @@ impl<S: Send + Sync> FromRequestParts<S> for Ctx {
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self> {
-        println!("->> {:<12} - Ctx", "EXTRACTOR");
+        debug!(" {:<12} - Ctx", "EXTRACTOR");
 
         parts
             .extensions

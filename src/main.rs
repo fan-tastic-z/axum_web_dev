@@ -1,11 +1,15 @@
+mod config;
 mod ctx;
 mod error;
 mod log;
 mod model;
 mod web;
-use crate::{log::log_request, model::ModelController};
+// #[cfg(test)] // Commented during early development.
+pub mod _dev_utils;
+use crate::{log::log_request, model::ModelController, web::routes_static};
 
 pub use self::error::{Error, Result};
+pub use config::Config;
 
 use std::net::SocketAddr;
 
@@ -14,7 +18,7 @@ use axum::{
     http::{Method, Uri},
     middleware,
     response::{Html, IntoResponse, Response},
-    routing::{get, get_service},
+    routing::get,
     Json, Router,
 };
 use ctx::Ctx;
@@ -22,7 +26,9 @@ use serde::Deserialize;
 
 use serde_json::json;
 use tower_cookies::CookieManagerLayer;
-use tower_http::services::ServeDir;
+
+use tracing::debug;
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
@@ -33,6 +39,9 @@ async fn main() -> Result<()> {
         .with_target(false)
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    // -- FOR DEV ONLY
+    _dev_utils::init_dev().await;
 
     // Initialize ModelController.
     let mc = ModelController::new().await?;
@@ -50,11 +59,11 @@ async fn main() -> Result<()> {
             web::mw_auth::mw_ctx_resolver,
         ))
         .layer(CookieManagerLayer::new())
-        .fallback_service(routes_static());
+        .fallback_service(routes_static::serve_dir());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 7000));
 
-    println!("->> LISTING on {addr}\n");
+    info!("LISTING on {addr}\n");
 
     // region:    --- Start server
     axum::Server::bind(&addr)
@@ -72,7 +81,7 @@ async fn main_response_mapper(
     req_method: Method,
     res: Response,
 ) -> Response {
-    println!("->> {:<12} - main_response_mapper", "RES_MAPPER");
+    debug!(" {:<12} - main_response_mapper", "RES_MAPPER");
     let uuid = Uuid::new_v4();
 
     // -- Get the eventual response error.
@@ -98,12 +107,8 @@ async fn main_response_mapper(
     let client_error = client_status_error.unzip().1;
     let _ = log_request(uuid, req_method, uri, ctx, service_error, client_error).await;
 
-    println!();
+    debug!("\n");
     error_response.unwrap_or(res)
-}
-
-fn routes_static() -> Router {
-    Router::new().nest_service("/", get_service(ServeDir::new("./")))
 }
 
 // region:    --- Routes Hello
@@ -121,14 +126,14 @@ struct HelloParams {
 
 // e.g.,`/hello?name=fan-tastic`
 async fn handle_hello(Query(params): Query<HelloParams>) -> impl IntoResponse {
-    println!("->> {:<12} - handler_hello - {params:?}", "HANDLER");
+    debug!(" {:<12} - handler_hello - {params:?}", "HANDLER");
 
     let name = params.name.as_deref().unwrap_or("World!");
     Html(format!("Hello <Strong>{name}</strong>"))
 }
 // e.g, `hello2/Mike`
 async fn handler_hello2(Path(name): Path<String>) -> impl IntoResponse {
-    println!("->> {:<12} - handler_hello2 - {name:?}", "HANDLER");
+    debug!(" {:<12} - handler_hello2 - {name:?}", "HANDLER");
     Html(format!("Hello2 <strong>{name}</strong>"))
 }
 // endregion: ---  Routes Hello
