@@ -10,6 +10,12 @@ RUST_LOG = "axum_web_dev=debug"
 # IMPORTANT:
 #    For cargo commands only.
 
+## -- Secrets
+# Kyes and passwords below are for localhost dev ONLY.
+# e.g., "password" type of passwords.
+# i.e., Encryption not need.
+SERVICE_DB_URL = "postgres://app_user:dev_only_pwd@localhost/app_db"
+
 ## -- CofnigMap
 
 # This will be relative to Cargo.toml
