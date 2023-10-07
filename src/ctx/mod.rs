@@ -1,5 +1,10 @@
+// region:    --- Modules
+
 mod error;
+
 pub use self::error::{Error, Result};
+
+// endregion: --- Modules
 
 #[derive(Clone, Debug)]
 pub struct Ctx {

@@ -6,31 +6,31 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# web
-axum = { version = "0.6", features = ["macros"] }
-tower-http = { version = "0.4", features = ["fs"] }
-tower-cookies = "0.9"
-# serde / json
+tokio = { version = "1", features = ["full"] }
+# -- Json
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_with = "3"
-# tokio
-tokio = { version = "1", features = ["full"] }
-# -- Tracing
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# -- Web
+axum = "0.6"
+tower-http = { version = "0.4", features = ["fs"] }
+tower-cookies = "0.9"
 # -- Data
-sqlx = { version = "0.7", features = [
+sqlx = { version = "0.6", features = [
     "runtime-tokio-rustls",
     "postgres",
     "uuid",
     "time",
 ] }
-# Others
+# -- Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# -- Others
+uuid = { version = "1", features = ["v4", "fast-rng"] }
 lazy-regex = "3"
 async-trait = "0.1"
 strum_macros = "0.25"
-uuid = { version = "1", features = ["v4", "fast-rng"] }
+
 
 [dev-dependencies]
 anyhow = "1"

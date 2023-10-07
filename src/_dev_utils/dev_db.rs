@@ -22,18 +22,17 @@ pub async fn init_dev_db() -> Result<(), Box<dyn std::error::Error>> {
         pexec(&root_db, SQL_RECREATE_DB).await?;
     }
 
-    // -- Get sql files
+    // -- Get sql files.
     let mut paths: Vec<PathBuf> = fs::read_dir(SQL_DIR)?
         .filter_map(|entry| entry.ok().map(|e| e.path()))
         .collect();
-
     paths.sort();
 
     // -- SQL Execute each file.
     let app_db = new_db_pool(PG_DEV_APP_URL).await?;
     for path in paths {
         if let Some(path) = path.to_str() {
-            let path = path.replace("\\", "/"); // for windows.
+            let path = path.replace('\\', "/"); // for windows.
 
             // Only take the .sql and skip the SQL_RECREATE_DB
             if path.ends_with(".sql") && path != SQL_RECREATE_DB {
@@ -41,16 +40,19 @@ pub async fn init_dev_db() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
     Ok(())
 }
 
 async fn pexec(db: &Db, file: &str) -> Result<(), sqlx::Error> {
     info!("{:<12} - pexec: {file}", "FOR-DEV-ONLY");
 
-    // -- Read the file
+    // -- Read the file.
     let content = fs::read_to_string(file)?;
 
-    let sqls: Vec<&str> = content.split(";").collect();
+    // FIXME: Make the split more sql proof.
+    let sqls: Vec<&str> = content.split(';').collect();
+
     for sql in sqls {
         sqlx::query(sql).execute(db).await?;
     }

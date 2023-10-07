@@ -1,5 +1,5 @@
 -- User demo1
 INSERT INTO
     "user" (username)
-values
+VALUES
     ('demo1');
