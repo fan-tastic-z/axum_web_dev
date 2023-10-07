@@ -22,6 +22,7 @@ sqlx = { version = "0.6", features = [
     "uuid",
     "time",
 ] }
+sqlb = "0.3"
 # -- Tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
