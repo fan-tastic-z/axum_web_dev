@@ -1,6 +1,5 @@
 use crate::ctx::Ctx;
 use crate::model::base::{self, DbBmc};
-use crate::model::Error;
 use crate::model::ModelManager;
 use crate::model::Result;
 use serde::{Deserialize, Serialize};
@@ -66,7 +65,7 @@ impl TaskBmc {
 #[cfg(test)]
 mod tests {
     #![allow(unused)]
-    use crate::_dev_utils;
+    use crate::{_dev_utils, model::Error};
 
     use super::*;
     use anyhow::Result;
