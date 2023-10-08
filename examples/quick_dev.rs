@@ -13,10 +13,20 @@ async fn main() -> Result<()> {
 		"/api/login",
 		json!({
 			"username": "demo1",
-			"pwd": "password1"
+			"pwd": "password"
 		}),
 	);
 	req_login.await?.print().await?;
+
+	let req_logoff = hc.do_post(
+		"/api/logoff",
+		json!({
+			"logoff": true,
+		}),
+	);
+	// req_logoff.await?.print().await?;
+
+	hc.do_get("/hello").await?.print().await?;
 
 	Ok(())
 }
