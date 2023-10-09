@@ -14,7 +14,7 @@ use crate::{
 	web::{
 		mw_auth::{mw_ctx_require, mw_ctx_resolve},
 		mw_res_map::mw_reponse_map,
-		routes_login, routes_static,
+		routes_login, routes_static, rpc,
 	},
 };
 
@@ -44,14 +44,12 @@ async fn main() -> Result<()> {
 	// Initialze ModelManager.
 	let mm = ModelManager::new().await?;
 
-	let routes_hello = Router::new()
-		.route("/hello", get(|| async { Html("Hello world!") }))
-		.layer(middleware::from_fn(mw_ctx_require));
+	let routes_rpc =
+		rpc::routes(mm.clone()).route_layer(middleware::from_fn(mw_ctx_require));
 
 	let routes_all = Router::new()
 		.merge(routes_login::routes(mm.clone()))
-		.merge(routes_hello)
-		// .nest("/api", routes_rpc)
+		.nest("/api", routes_rpc)
 		.layer(middleware::map_response(mw_reponse_map))
 		.layer(middleware::from_fn_with_state(mm.clone(), mw_ctx_resolve))
 		.layer(CookieManagerLayer::new())
