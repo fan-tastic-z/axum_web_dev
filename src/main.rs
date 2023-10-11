@@ -23,7 +23,7 @@ pub use config::Config;
 
 use std::net::SocketAddr;
 
-use axum::{middleware, response::Html, routing::get, Router};
+use axum::{middleware, Router};
 
 use tower_cookies::CookieManagerLayer;
 
