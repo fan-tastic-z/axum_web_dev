@@ -1,4 +1,4 @@
-use crate::{crypt, model, web};
+use crate::{model, pwd, token, web};
 use axum::{
 	http::StatusCode,
 	response::{IntoResponse, Response},
@@ -13,7 +13,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
 	// -- Login
 	LoginFailUsernameNotFound,
-	LoginFailUserHasNotPwd { user_id: i64 },
+	LoginFailUserHasNoPwd { user_id: i64 },
 	LoginFailPwdNotMatching { user_id: i64 },
 
 	// -- CtxExtError
@@ -21,7 +21,8 @@ pub enum Error {
 
 	// -- ModulesError
 	Model(model::Error),
-	Crypt(crypt::Error),
+	Pwd(pwd::Error),
+	Token(token::Error),
 
 	// -- RPC
 	RpcMethodUnknow(String),
@@ -39,9 +40,15 @@ impl From<model::Error> for Error {
 	}
 }
 
-impl From<crypt::Error> for Error {
-	fn from(val: crypt::Error) -> Self {
-		Self::Crypt(val)
+impl From<pwd::Error> for Error {
+	fn from(val: pwd::Error) -> Self {
+		Self::Pwd(val)
+	}
+}
+
+impl From<token::Error> for Error {
+	fn from(val: token::Error) -> Self {
+		Self::Token(val)
 	}
 }
 
@@ -93,7 +100,7 @@ impl Error {
 		match self {
 			// -- Login
 			LoginFailUsernameNotFound
-			| LoginFailUserHasNotPwd { .. }
+			| LoginFailUserHasNoPwd { .. }
 			| LoginFailPwdNotMatching { .. } => {
 				(StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL)
 			}

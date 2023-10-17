@@ -1,7 +1,6 @@
-use crate::crypt::pwd;
+use crate::pwd::{self, ContentToHash};
 use crate::web::remove_token_cookie;
 use crate::{
-	crypt::EncryptContent,
 	ctx::Ctx,
 	model::{
 		user::{UserBmc, UserForLogin},
@@ -45,20 +44,20 @@ async fn api_login_handler(
 
 	// -- Validate the password.
 	let Some(pwd) = user.pwd else {
-		return Err(Error::LoginFailUserHasNotPwd { user_id });
+		return Err(Error::LoginFailUserHasNoPwd { user_id });
 	};
 
 	pwd::validate_pwd(
-		&EncryptContent {
-			salt: user.pwd_salt.to_string(),
+		&ContentToHash {
+			salt: user.pwd_salt,
 			content: pwd_clear.clone(),
 		},
 		&pwd,
 	)
 	.map_err(|_| Error::LoginFailPwdNotMatching { user_id })?;
 
-	// Set web token
-	web::set_token_cookie(&cookies, &user.username, &user.token_salt.to_string())?;
+	// -- Set web token.
+	web::set_token_cookie(&cookies, &user.username, user.token_salt)?;
 	// Create the success body.
 	let body = Json(json!({
 		"result": {
