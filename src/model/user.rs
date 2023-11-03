@@ -3,8 +3,10 @@ use crate::model::ModelManager;
 use crate::model::Result;
 use crate::pwd::ContentToHash;
 use crate::{ctx::Ctx, pwd};
+use modql::field::{Fields, HasFields};
+use sea_query::{Expr, Iden, PostgresQueryBuilder, Query, SimpleExpr};
+use sea_query_binder::SqlxBinder;
 use serde::{Deserialize, Serialize};
-use sqlb::{Fields, HasFields};
 use sqlx::postgres::PgRow;
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -55,6 +57,13 @@ impl UserBy for User {}
 impl UserBy for UserForLogin {}
 impl UserBy for UserForAuth {}
 
+#[derive(Iden)]
+enum UserIden {
+	Id,
+	Username,
+	Pwd,
+}
+
 // endregion: --- User Types
 
 pub struct UserBmc;
@@ -81,13 +90,20 @@ impl UserBmc {
 	{
 		let db = mm.db();
 
-		let user = sqlb::select()
-			.table(Self::TABLE)
-			.and_where("username", "=", username)
-			.fetch_optional::<_, E>(db)
+		// -- Build query
+		let mut query = Query::select();
+		query
+			.from(Self::table_iden())
+			.columns(E::field_idens())
+			.and_where(Expr::col(UserIden::Username).eq(username));
+
+		// -- Execute query
+		let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+		let entity = sqlx::query_as_with::<_, E, _>(&sql, values)
+			.fetch_optional(db)
 			.await?;
 
-		Ok(user)
+		Ok(entity)
 	}
 
 	pub async fn update_pwd(
@@ -103,12 +119,19 @@ impl UserBmc {
 			salt: user.pwd_salt,
 		})?;
 
-		sqlb::update()
-			.table(Self::TABLE)
-			.and_where("id", "=", id)
-			.data(vec![("pwd", pwd.to_string()).into()])
-			.exec(db)
-			.await?;
+		// -- Build query
+		let mut query = Query::update();
+		query
+			.table(Self::table_iden())
+			.value(UserIden::Pwd, SimpleExpr::from(pwd))
+			.and_where(Expr::col(UserIden::Id).eq(id));
+
+		// -- Exec query
+		let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+		let _count = sqlx::query_with(&sql, values)
+			.execute(db)
+			.await?
+			.rows_affected();
 		Ok(())
 	}
 }
