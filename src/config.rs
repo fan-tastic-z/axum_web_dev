@@ -1,4 +1,6 @@
-use crate::{utils::b64u_decode, Error, Result};
+use lib_base::b64::b64u_decode;
+
+use crate::{Error, Result};
 use std::{env, str::FromStr, sync::OnceLock};
 
 pub fn config() -> &'static Config {

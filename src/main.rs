@@ -5,7 +5,6 @@ mod log;
 mod model;
 mod pwd;
 mod token;
-mod utils;
 mod web;
 // #[cfg(test)] // Commented during early development.
 pub mod _dev_utils;

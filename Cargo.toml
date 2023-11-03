@@ -5,8 +5,18 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[workspace]
+members = [
+    # -- Application Libraries
+    "crates/libs/lib-base",
+]
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+# -- App Libs
+lib-base = { path = "crates/libs/lib-base" }
 # -- Json
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -17,9 +27,13 @@ tower-http = { version = "0.4", features = ["fs"] }
 tower-cookies = "0.9"
 # -- Data
 sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid"] }
-modql = {version = "0.3.0-alpha.5", features = ["with-sea-query"]}
+modql = { version = "0.3.0-alpha.5", features = ["with-sea-query"] }
 sea-query = "0.30"
-sea-query-binder = { version = "0.5", features = ["sqlx-postgres", "with-uuid", "with-time" ] }
+sea-query-binder = { version = "0.5", features = [
+    "sqlx-postgres",
+    "with-uuid",
+    "with-time",
+] }
 # -- Tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -31,7 +45,6 @@ base64 = "0.21"
 # -- Others
 uuid = { version = "1", features = ["v4", "fast-rng"] }
 time = "0.3"
-async-trait = "0.1"
 strum_macros = "0.25"
 
 
