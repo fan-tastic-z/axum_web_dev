@@ -3,22 +3,23 @@ use axum::{
 	response::{IntoResponse, Response},
 	Json,
 };
+
 use serde_json::{json, to_value};
 use tracing::debug;
 use uuid::Uuid;
 
 use crate::{
-	ctx::Ctx,
 	log::log_request,
-	web::{self, rpc::RpcInfo},
+	web::{self, mw_auth::CtxW, rpc::RpcInfo},
 };
 
 pub async fn mw_reponse_map(
-	ctx: Option<Ctx>,
+	ctx: Option<CtxW>,
 	uri: Uri,
 	req_method: Method,
 	res: Response,
 ) -> Response {
+	let ctx = ctx.map(|c| c.0);
 	debug!("{:<12} - mw_reponse_map", "RES_MAPPER");
 	let uuid = Uuid::new_v4();
 

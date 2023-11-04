@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
 			"id":"1",
 			"method": "update_task",
 			"params": {
-				"id": 1000333,
+				"id": 1000,
 				"data": {
 					"title": "task BBB",
 				}

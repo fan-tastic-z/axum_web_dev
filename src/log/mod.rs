@@ -2,16 +2,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{web::rpc::RpcInfo, Result};
 use axum::http::{Method, Uri};
+use lib_core::ctx::Ctx;
 use serde::Serialize;
 use serde_json::{json, Value};
 use serde_with::skip_serializing_none;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::{
-	ctx::Ctx,
-	web::{self, ClientError},
-};
+use crate::web::{self, ClientError};
 
 pub async fn log_request(
 	uuid: Uuid,

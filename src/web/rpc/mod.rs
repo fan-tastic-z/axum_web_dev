@@ -6,18 +6,17 @@ use axum::{
 	routing::post,
 	Json, Router,
 };
+use lib_core::{ctx::Ctx, model::ModelManager};
 use serde::Deserialize;
 use serde_json::{from_value, json, to_value, Value};
 use tracing::debug;
 
-use crate::{
-	ctx::Ctx,
-	model::ModelManager,
-	web::{
-		rpc::task_rpc::{create_task, delete_task, list_tasks, update_task},
-		Error, Result,
-	},
+use crate::web::{
+	mw_auth::CtxW,
+	rpc::task_rpc::{create_task, delete_task, list_tasks, update_task},
+	Error, Result,
 };
+
 mod task_rpc;
 // endregion: --- Modules
 
@@ -82,9 +81,10 @@ macro_rules! exec_rpc_fn {
 
 async fn rpc_handler(
 	State(mm): State<ModelManager>,
-	ctx: Ctx,
+	ctx: CtxW,
 	Json(rpc_req): Json<RpcRequest>,
 ) -> Response {
+	let ctx = ctx.0;
 	let rpc_info = RpcInfo {
 		id: rpc_req.id.clone(),
 		method: rpc_req.method.clone(),

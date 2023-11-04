@@ -5,23 +5,23 @@ use axum::{
 	middleware::Next,
 	response::Response,
 };
-use serde::Serialize;
-use tower_cookies::{Cookie, Cookies};
-use tracing::debug;
-
-use crate::{
+use lib_core::{
 	ctx::Ctx,
 	model::{
 		user::{UserBmc, UserForAuth},
 		ModelManager,
 	},
 	token::{validate_web_token, Token},
-	web::{set_token_cookie, Error, Result, AUTH_TOKEN},
 };
+use serde::Serialize;
+use tower_cookies::{Cookie, Cookies};
+use tracing::debug;
+
+use crate::web::{set_token_cookie, Error, Result, AUTH_TOKEN};
 
 #[allow(dead_code)] // For now, until we have the rpc.
 pub async fn mw_ctx_require<B>(
-	ctx: Result<Ctx>,
+	ctx: Result<CtxW>,
 	req: Request<B>,
 	next: Next<B>,
 ) -> Result<Response> {
@@ -56,8 +56,11 @@ pub async fn mw_ctx_resolve<B>(
 }
 
 // region:    --- Ctx Extractor
+#[derive(Debug, Clone)]
+pub struct CtxW(pub Ctx);
+
 #[async_trait]
-impl<S: Send + Sync> FromRequestParts<S> for Ctx {
+impl<S: Send + Sync> FromRequestParts<S> for CtxW {
 	type Rejection = Error;
 
 	async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self> {
@@ -96,13 +99,15 @@ async fn _ctx_resolve(mm: State<ModelManager>, cookies: &Cookies) -> CtxExtResul
 	set_token_cookie(cookies, &user.username, user.token_salt)
 		.map_err(|_| CtxExtError::CannotSetTokenCookie)?;
 	// -- Create CtxExtResult
-	Ctx::new(user.id).map_err(|ex| CtxExtError::CtxCreateFail(ex.to_string()))
+	Ctx::new(user.id)
+		.map(CtxW)
+		.map_err(|ex| CtxExtError::CtxCreateFail(ex.to_string()))
 }
 
 // endregion: --- Ctx Extractor
 
 // region:    --- Ctx Extractor Result/Error
-type CtxExtResult = core::result::Result<Ctx, CtxExtError>;
+type CtxExtResult = core::result::Result<CtxW, CtxExtError>;
 
 #[derive(Clone, Serialize, Debug)]
 pub enum CtxExtError {

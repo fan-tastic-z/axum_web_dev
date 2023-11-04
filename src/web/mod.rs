@@ -5,13 +5,11 @@ pub mod routes_login;
 pub mod routes_static;
 pub mod rpc;
 
-use tower_cookies::{Cookie, Cookies};
-use uuid::Uuid;
-
-use crate::token::generate_web_token;
-
 pub use self::error::ClientError;
 pub use self::error::{Error, Result};
+use lib_core::token::generate_web_token;
+use tower_cookies::{Cookie, Cookies};
+use uuid::Uuid;
 
 pub const AUTH_TOKEN: &str = "auth-token";
 
