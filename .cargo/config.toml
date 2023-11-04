@@ -4,7 +4,7 @@
 [env]
 
 # Scope down tracing, to filter out external lib tracing.
-RUST_LOG = "axum_web_dev=debug"
+RUST_LOG = "rust_web_dev=debug,lib_core=debug,lib_base=debug"
 
 # -- Service Environment Variables
 # IMPORTANT:
