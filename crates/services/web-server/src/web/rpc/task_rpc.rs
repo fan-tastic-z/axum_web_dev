@@ -1,14 +1,14 @@
 use lib_core::{
 	ctx::Ctx,
 	model::{
-		task::{Task, TaskBmc, TaskForCreate, TaskForUpdate},
+		task::{Task, TaskBmc, TaskFilter, TaskForCreate, TaskForUpdate},
 		ModelManager,
 	},
 };
 
 use crate::web::Result;
 
-use super::{ParamsForCreate, ParamsForUpdate, ParamsIded};
+use super::{ParamsForCreate, ParamsForUpdate, ParamsIded, ParamsList};
 
 pub async fn create_task(
 	ctx: Ctx,
@@ -22,8 +22,15 @@ pub async fn create_task(
 	Ok(task)
 }
 
-pub async fn list_tasks(ctx: Ctx, mm: ModelManager) -> Result<Vec<Task>> {
-	let tasks = TaskBmc::list(&ctx, &mm).await?;
+pub async fn list_tasks(
+	ctx: Ctx,
+	mm: ModelManager,
+	params: Option<ParamsList<TaskFilter>>,
+) -> Result<Vec<Task>> {
+	let (filter, list_options) = params.map(|p| (p.filter, p.list_options)).unzip();
+	let tasks =
+		TaskBmc::list(&ctx, &mm, filter.flatten(), list_options.flatten()).await?;
+
 	Ok(tasks)
 }
 

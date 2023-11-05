@@ -1,6 +1,9 @@
 use modql::field::HasFields;
+use modql::filter::{IntoSeaError, ListOptions};
 use modql::SIden;
-use sea_query::{DynIden, Expr, Iden, IntoIden, PostgresQueryBuilder, Query};
+use sea_query::{
+	Condition, DynIden, Expr, Iden, IntoIden, PostgresQueryBuilder, Query,
+};
 use sea_query_binder::SqlxBinder;
 use sqlx::postgres::PgRow;
 use sqlx::FromRow;
@@ -77,17 +80,29 @@ where
 	Ok(entity)
 }
 
-pub async fn list<MC, E>(_ctx: &Ctx, mm: &ModelManager) -> Result<Vec<E>>
+pub async fn list<MC, E, F>(
+	_ctx: &Ctx,
+	mm: &ModelManager,
+	filter: Option<F>,
+	_list_options: Option<ListOptions>,
+) -> Result<Vec<E>>
 where
 	MC: DbBmc,
 	E: for<'r> FromRow<'r, PgRow> + Unpin + Send,
 	E: HasFields,
+	F: TryInto<Condition, Error = IntoSeaError>,
 {
 	let db = mm.db();
 
 	// -- Build the query
 	let mut query = Query::select();
 	query.from(MC::table_iden()).columns(E::field_column_refs());
+
+	// condition from filter
+	if let Some(filter) = filter {
+		let cond: Condition = filter.try_into()?;
+		query.cond_where(cond);
+	}
 
 	// -- Execute the query
 	let (sql, values) = query.build_sqlx(PostgresQueryBuilder);

@@ -28,7 +28,7 @@ pub enum Error {
 	// -- RPC
 	RpcMethodUnknow(String),
 	RpcMissingParams { rpc_method: String },
-	RpcFailJsonParams { rpc_method: String },
+	RpcFailJsonParams { rpc_method: String, cause: String },
 
 	// -- External Modules
 	SerdeJson(String),

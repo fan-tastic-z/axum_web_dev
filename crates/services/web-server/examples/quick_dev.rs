@@ -59,14 +59,28 @@ async fn main() -> Result<()> {
 	);
 	req_delete_task.await?.print().await?;
 
-	let req_list_tasks = hc.do_post(
+	let req_list_all_tasks = hc.do_post(
+		"/api/rpc",
+		json!({
+			"id": 1,
+			"method": "list_tasks"
+		}),
+	);
+	req_list_all_tasks.await?.print().await?;
+
+	let req_list_b_tasks = hc.do_post(
 		"/api/rpc",
 		json!({
 			"id": 1,
 			"method": "list_tasks",
+			"params": {
+				"filter": {
+					"title": {"$contains": "BB"},
+				}
+			}
 		}),
 	);
-	req_list_tasks.await?.print().await?;
+	req_list_b_tasks.await?.print().await?;
 
 	let req_logoff = hc.do_post(
 		"/api/logoff",

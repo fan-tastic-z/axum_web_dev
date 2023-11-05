@@ -17,6 +17,7 @@ pub enum Error {
 	// -- Externals
 	SeaQuery(#[serde_as(as = "DisplayFromStr")] sea_query::error::Error),
 	Sqlx(#[serde_as(as = "DisplayFromStr")] sqlx::Error),
+	ModqlIntoSea(#[serde_as(as = "DisplayFromStr")] modql::filter::IntoSeaError),
 }
 
 // region:    --- Froms
@@ -41,6 +42,12 @@ impl From<sea_query::error::Error> for Error {
 impl From<sqlx::Error> for Error {
 	fn from(val: sqlx::Error) -> Self {
 		Self::Sqlx(val)
+	}
+}
+
+impl From<modql::filter::IntoSeaError> for Error {
+	fn from(val: modql::filter::IntoSeaError) -> Self {
+		Self::ModqlIntoSea(val)
 	}
 }
 // endregion: --- Froms
