@@ -41,3 +41,34 @@ fn hash(key: &[u8], to_hash: &ContentToHash) -> Result<String> {
 
 	Ok(result)
 }
+
+// region:    --- Tests
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::config;
+	use anyhow::Result;
+	use uuid::Uuid;
+
+	#[test]
+	fn test_scheme_01_hash_into_b64u_ok() -> Result<()> {
+		// -- Setup & Fixtures
+		let fx_salt = Uuid::parse_str("f05e8961-d6ad-4086-9e78-a6de065e5453")?;
+		let fx_key = &config().PWD_KEY; // 512 bits = 64 bytes
+		let fx_to_hash = ContentToHash {
+			content: "hello world".to_string(),
+			salt: fx_salt,
+		};
+		// TODO: Need to fix fx_key, and precompute fx_res.
+		let fx_res = "qO9A90161DoewhNXFwVcnAaljRIVnajvd5zsVDrySCwxpoLwVCACzaz-8Ev2ZpI8RackUTLBVqFI6H5oMe-OIg";
+
+		// -- Exec
+		let res = hash(fx_key, &fx_to_hash)?;
+
+		// -- Check
+		assert_eq!(res, fx_res);
+
+		Ok(())
+	}
+}
+// endregion: --- Tests

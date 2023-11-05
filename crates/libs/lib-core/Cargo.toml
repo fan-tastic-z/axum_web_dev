@@ -29,9 +29,11 @@ sea-query-binder = { version = "0.5", features = [
 # -- Tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-# -- Hashing
+# -- Hashing (Scheme01 & Token)
 hmac = "0.12"
 sha2 = "0.10"
+# -- Hashing (Scheme02)
+argon2 = { version = "0.5", features = ["std"] }
 # -- Others
 uuid = { version = "1", features = ["v4", "fast-rng"] }
 async-trait = "0.1"
