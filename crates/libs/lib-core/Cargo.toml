@@ -12,7 +12,7 @@ lib-base = { path = "../../libs/lib-base" }
 # -- Json
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_with = "3"
+serde_with = { version = "3", features = ["time_0_3"] }
 # -- Web
 axum = "0.6"
 tower-http = { version = "0.4", features = ["fs"] }

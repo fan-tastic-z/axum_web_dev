@@ -1,4 +1,5 @@
-use modql::field::HasFields;
+use lib_base::time::now_utc;
+use modql::field::{Field, Fields, HasFields};
 use modql::filter::{IntoSeaError, ListOptions};
 use modql::SIden;
 use sea_query::{
@@ -17,6 +18,14 @@ pub enum CommonIden {
 	Id,
 }
 
+#[derive(Iden)]
+pub enum TimestampIden {
+	Cid,
+	Ctime,
+	Mid,
+	Mtime,
+}
+
 pub trait DbBmc {
 	const TABLE: &'static str;
 
@@ -25,7 +34,7 @@ pub trait DbBmc {
 	}
 }
 
-pub async fn create<MC, E>(_ctx: &Ctx, mm: &ModelManager, data: E) -> Result<i64>
+pub async fn create<MC, E>(ctx: &Ctx, mm: &ModelManager, data: E) -> Result<i64>
 where
 	MC: DbBmc,
 	E: HasFields,
@@ -33,7 +42,8 @@ where
 	let db = mm.db();
 
 	// -- Extract fields (name / sea-query value expression)
-	let fields = data.not_none_fields();
+	let mut fields = data.not_none_fields();
+	add_timestamps_for_create(&mut fields, ctx.user_id());
 	let (columns, sea_values) = fields.for_sea_insert();
 
 	// -- Build query
@@ -111,8 +121,6 @@ where
 
 	// -- Execute the query
 	let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
-	println!("->> SQL\n{sql}");
-	println!("->> Values\n{values:?}");
 	let entities = sqlx::query_as_with::<_, E, _>(&sql, values)
 		.fetch_all(db)
 		.await?;
@@ -120,7 +128,7 @@ where
 }
 
 pub async fn update<MC, E>(
-	_ctx: &Ctx,
+	ctx: &Ctx,
 	mm: &ModelManager,
 	id: i64,
 	data: E,
@@ -131,7 +139,8 @@ where
 {
 	let db = mm.db();
 
-	let fields = data.not_none_fields();
+	let mut fields = data.not_none_fields();
+	add_timestamps_for_update(&mut fields, ctx.user_id());
 	let fields = fields.for_sea_update();
 
 	// -- Build query
@@ -188,3 +197,24 @@ where
 		Ok(())
 	}
 }
+
+// region:    --- Utils
+/// Update the timestamps info for create
+/// (e.g., cid, ctime, and mid, mtime will be updated with the same values)
+pub fn add_timestamps_for_create(fields: &mut Fields, user_id: i64) {
+	let now = now_utc();
+	fields.push(Field::new(TimestampIden::Cid.into_iden(), user_id.into()));
+	fields.push(Field::new(TimestampIden::Ctime.into_iden(), now.into()));
+
+	fields.push(Field::new(TimestampIden::Mid.into_iden(), user_id.into()));
+	fields.push(Field::new(TimestampIden::Mtime.into_iden(), now.into()));
+}
+
+/// Update the timestamps info only for update.
+/// (.e.g., only mid, mtime will be udpated)
+pub fn add_timestamps_for_update(fields: &mut Fields, user_id: i64) {
+	let now = now_utc();
+	fields.push(Field::new(TimestampIden::Mid.into_iden(), user_id.into()));
+	fields.push(Field::new(TimestampIden::Mtime.into_iden(), now.into()));
+}
+// endregion: --- Utils

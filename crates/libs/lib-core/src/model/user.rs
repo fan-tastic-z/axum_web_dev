@@ -3,13 +3,15 @@ use crate::model::ModelManager;
 use crate::model::Result;
 use crate::pwd::ContentToHash;
 use crate::{ctx::Ctx, pwd};
-use modql::field::{Fields, HasFields};
-use sea_query::{Expr, Iden, PostgresQueryBuilder, Query, SimpleExpr};
+use modql::field::{Field, Fields, HasFields};
+use sea_query::{Expr, Iden, PostgresQueryBuilder, Query};
 use sea_query_binder::SqlxBinder;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
 use sqlx::FromRow;
 use uuid::Uuid;
+
+use super::base::add_timestamps_for_update;
 
 // region:    --- User Types
 
@@ -119,11 +121,16 @@ impl UserBmc {
 			salt: user.pwd_salt,
 		})?;
 
+		// -- Prep the data
+		let mut fields = Fields::new(vec![Field::new(UserIden::Pwd, pwd.into())]);
+		add_timestamps_for_update(&mut fields, ctx.user_id());
+
 		// -- Build query
+		let fields = fields.for_sea_update();
 		let mut query = Query::update();
 		query
 			.table(Self::table_iden())
-			.value(UserIden::Pwd, SimpleExpr::from(pwd))
+			.values(fields)
 			.and_where(Expr::col(UserIden::Id).eq(id));
 
 		// -- Exec query
