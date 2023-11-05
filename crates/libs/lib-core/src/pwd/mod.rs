@@ -2,9 +2,9 @@ mod error;
 mod scheme;
 
 pub use self::error::{Error, Result};
+use crate::pwd::scheme::{get_scheme, Scheme, DEFAULT_SCHEME};
 pub use scheme::SchemeStatus;
 
-use crate::pwd::scheme::{get_scheme, DEFAULT_SCHEME};
 use lazy_regex::regex_captures;
 use std::str::FromStr;
 use uuid::Uuid;
