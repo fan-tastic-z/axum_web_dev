@@ -21,6 +21,7 @@
 mod base;
 mod error;
 mod store;
+pub mod project;
 pub mod task;
 pub mod user;
 
