@@ -15,7 +15,7 @@ pub enum Error {
 	// -- Login
 	LoginFailUsernameNotFound,
 	LoginFailUserHasNoPwd { user_id: i64 },
-	LoginFailPwdNotMatching { user_id: i64 },
+	LoginFail { user_id: i64, cause: pwd::Error },
 
 	// -- CtxExtError
 	CtxExt(web::mw_auth::CtxExtError),
@@ -102,9 +102,7 @@ impl Error {
 			// -- Login
 			LoginFailUsernameNotFound
 			| LoginFailUserHasNoPwd { .. }
-			| LoginFailPwdNotMatching { .. } => {
-				(StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL)
-			}
+			| LoginFail { .. } => (StatusCode::FORBIDDEN, ClientError::LOGIN_FAIL),
 
 			//-- Auth
 			CtxExt(_) => (StatusCode::FORBIDDEN, ClientError::NO_AUTH),
