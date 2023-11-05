@@ -5,7 +5,7 @@ mod web;
 use crate::web::{
 	mw_auth::{mw_ctx_require, mw_ctx_resolve},
 	mw_res_map::mw_reponse_map,
-	routes_login, routes_static, rpc,
+	routes_login, routes_static, rpc, mw_req_stamp::mw_req_stamp,
 };
 
 pub use self::error::{Error, Result};
@@ -42,6 +42,7 @@ async fn main() -> Result<()> {
 		.nest("/api", routes_rpc)
 		.layer(middleware::map_response(mw_reponse_map))
 		.layer(middleware::from_fn_with_state(mm.clone(), mw_ctx_resolve))
+		.layer(middleware::from_fn(mw_req_stamp))
 		.layer(CookieManagerLayer::new())
 		.fallback_service(routes_static::serve_dir());
 
