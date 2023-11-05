@@ -88,6 +88,7 @@ mod tests {
 	use super::*;
 	use anyhow::Result;
 	use modql::filter::OpValString;
+	use serde_json::json;
 	use serial_test::serial;
 
 	#[serial]
@@ -193,6 +194,52 @@ mod tests {
 
 		// -- Check
 		assert_eq!(tasks.len(), 2);
+
+		// -- Cleanup
+		// Will delete associate tasks
+		for task in tasks {
+			TaskBmc::delete(&ctx, &mm, task.id).await?;
+		}
+
+		Ok(())
+	}
+
+	#[serial]
+	#[tokio::test]
+	async fn test_list_with_list_options_ok() -> Result<()> {
+		// -- Setup & Fixtures
+		let mm = _dev_utils::init_test().await;
+		let ctx = Ctx::root_ctx();
+		let fx_titles = &[
+			"test_list_with_list_options_ok 01",
+			"test_list_with_list_options_ok 02.1",
+			"test_list_with_list_options_ok 02.2",
+		];
+		_dev_utils::seed_tasks(&ctx, &mm, fx_titles).await?;
+
+		// -- Exec
+		let filter: TaskFilter = serde_json::from_value(json!({
+			"title": {"$startsWith": "test_list_with_list_options_ok" }
+		}))?;
+		let list_options: ListOptions = serde_json::from_value(json! ({
+			"offset": 0,
+			"limit": 2,
+			"order_bys": "!title"
+		}))?;
+		let tasks =
+			TaskBmc::list(&ctx, &mm, Some(filter), Some(list_options)).await?;
+
+		// -- Check
+		let titles: Vec<String> =
+			tasks.iter().map(|t| t.title.to_string()).collect();
+		assert_eq!(titles.len(), 2);
+		assert_eq!(
+			&titles,
+			&[
+				"test_list_with_list_options_ok 02.2",
+				"test_list_with_list_options_ok 02.1"
+			]
+		);
 
 		// -- Cleanup
 		// Will delete associate tasks

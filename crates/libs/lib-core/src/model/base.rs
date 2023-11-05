@@ -84,7 +84,7 @@ pub async fn list<MC, E, F>(
 	_ctx: &Ctx,
 	mm: &ModelManager,
 	filter: Option<F>,
-	_list_options: Option<ListOptions>,
+	list_options: Option<ListOptions>,
 ) -> Result<Vec<E>>
 where
 	MC: DbBmc,
@@ -102,6 +102,11 @@ where
 	if let Some(filter) = filter {
 		let cond: Condition = filter.try_into()?;
 		query.cond_where(cond);
+	}
+
+	// list options
+	if let Some(list_options) = list_options {
+		list_options.apply_to_sea_query(&mut query);
 	}
 
 	// -- Execute the query
