@@ -95,7 +95,7 @@ impl UserBmc {
 		// -- Build query
 		let mut query = Query::select();
 		query
-			.from(Self::table_iden())
+			.from(Self::table_ref())
 			.columns(E::field_idens())
 			.and_where(Expr::col(UserIden::Username).eq(username));
 
@@ -129,7 +129,7 @@ impl UserBmc {
 		let fields = fields.for_sea_update();
 		let mut query = Query::update();
 		query
-			.table(Self::table_iden())
+			.table(Self::table_ref())
 			.values(fields)
 			.and_where(Expr::col(UserIden::Id).eq(id));
 

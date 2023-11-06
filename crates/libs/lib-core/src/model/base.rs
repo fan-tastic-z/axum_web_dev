@@ -3,7 +3,7 @@ use modql::field::{Field, Fields, HasFields};
 use modql::filter::{IntoSeaError, ListOptions};
 use modql::SIden;
 use sea_query::{
-	Condition, DynIden, Expr, Iden, IntoIden, PostgresQueryBuilder, Query,
+	Condition, Expr, Iden, IntoIden, PostgresQueryBuilder, Query, TableRef,
 };
 use sea_query_binder::SqlxBinder;
 use sqlx::postgres::PgRow;
@@ -29,8 +29,8 @@ pub enum TimestampIden {
 pub trait DbBmc {
 	const TABLE: &'static str;
 
-	fn table_iden() -> DynIden {
-		SIden(Self::TABLE).into_iden()
+	fn table_ref() -> TableRef {
+		TableRef::Table(SIden(Self::TABLE).into_iden())
 	}
 }
 
@@ -49,7 +49,7 @@ where
 	// -- Build query
 	let mut query = Query::insert();
 	query
-		.into_table(MC::table_iden())
+		.into_table(MC::table_ref())
 		.columns(columns)
 		.values(sea_values)?
 		.returning(Query::returning().columns([CommonIden::Id]));
@@ -73,7 +73,7 @@ where
 	// -- Build query
 	let mut query = Query::select();
 	query
-		.from(MC::table_iden())
+		.from(MC::table_ref())
 		.columns(E::field_column_refs())
 		.and_where(Expr::col(CommonIden::Id).eq(id));
 
@@ -106,7 +106,7 @@ where
 
 	// -- Build the query
 	let mut query = Query::select();
-	query.from(MC::table_iden()).columns(E::field_column_refs());
+	query.from(MC::table_ref()).columns(E::field_column_refs());
 
 	// condition from filter
 	if let Some(filter) = filter {
@@ -146,7 +146,7 @@ where
 	// -- Build query
 	let mut query = Query::update();
 	query
-		.table(MC::table_iden())
+		.table(MC::table_ref())
 		.values(fields)
 		.and_where(Expr::col(CommonIden::Id).eq(id));
 
@@ -177,7 +177,7 @@ where
 	// -- Build query
 	let mut query = Query::delete();
 	query
-		.from_table(MC::table_iden())
+		.from_table(MC::table_ref())
 		.and_where(Expr::col(CommonIden::Id).eq(id));
 
 	// -- Execute query
