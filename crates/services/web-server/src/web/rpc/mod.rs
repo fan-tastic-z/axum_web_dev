@@ -1,26 +1,21 @@
 // region:    --- Modules
 
+use crate::web::{mw_auth::CtxW, Result};
 use axum::{
 	extract::State,
 	response::{IntoResponse, Response},
 	routing::post,
 	Json, Router,
 };
-use lib_core::{ctx::Ctx, model::ModelManager};
+use lib_core::model::ModelManager;
 use modql::filter::ListOptions;
-use serde::Deserialize;
-use serde_json::{from_value, json, to_value, Value};
-use tracing::debug;
+use serde::{de::DeserializeOwned, Deserialize};
+use serde_json::{json, Value};
+use std::sync::Arc;
 
-use crate::web::rpc::project_rpc::{
-	create_project, delete_project, list_projects, update_project,
-};
-use crate::web::{
-	mw_auth::CtxW,
-	rpc::task_rpc::{create_task, delete_task, list_tasks, update_task},
-	Error, Result,
-};
+use crate::web::rpc::infra::{IntoHandlerParams, RpcRouter};
 
+mod infra;
 mod project_rpc;
 mod task_rpc;
 
@@ -41,16 +36,22 @@ pub struct ParamsForCreate<D> {
 	data: D,
 }
 
+impl<D> IntoHandlerParams for ParamsForCreate<D> where D: DeserializeOwned + Send {}
+
 #[derive(Deserialize)]
 pub struct ParamsForUpdate<D> {
 	id: i64,
 	data: D,
 }
 
+impl<D> IntoHandlerParams for ParamsForUpdate<D> where D: DeserializeOwned + Send {}
+
 #[derive(Deserialize)]
 pub struct ParamsIded {
 	id: i64,
 }
+
+impl IntoHandlerParams for ParamsIded {}
 
 #[derive(Deserialize)]
 pub struct ParamsList<F> {
@@ -58,107 +59,77 @@ pub struct ParamsList<F> {
 	list_options: Option<ListOptions>,
 }
 
+impl<F> IntoHandlerParams for ParamsList<F> where F: DeserializeOwned + Send {}
+
+impl<F> IntoHandlerParams for Option<ParamsList<F>>
+where
+	F: DeserializeOwned + Send,
+{
+	fn into_handler_params(value: Option<Value>) -> Result<Self> {
+		match value {
+			Some(value) => Ok(serde_json::from_value(value)?),
+			None => Ok(None),
+		}
+	}
+}
+
 // endregion: --- RPC Types
 
 pub fn routes(mm: ModelManager) -> Router {
+	// Build the combined RpcRouter.
+	let mut rpc_router = RpcRouter::new()
+		.append(task_rpc::rpc_router())
+		.append(project_rpc::rpc_router());
+
+	// Build the Axum States needed for this axum Router.
+	let rpc_states = RpcStates(mm, Arc::new(rpc_router));
+
+	// Build the Acum Router for '/rpc'
 	Router::new()
-		.route("/rpc", post(rpc_handler))
-		.with_state(mm)
+		.route("/rpc", post(rpc_axum_handler))
+		.with_state(rpc_states)
 }
 
+/// RPC basic information containing the id and method for additional logging purposes.
 #[derive(Debug)]
 pub struct RpcInfo {
 	pub id: Option<Value>,
 	pub method: String,
 }
 
-macro_rules! exec_rpc_fn {
-	// With optional Params
-	($rpc_fn:expr, $ctx:expr, $mm:expr, ($rpc_params:expr, "optional")) => {{
-		let rpc_fn_name = stringify!($rpc_fn);
+#[derive(Clone)]
+struct RpcStates(ModelManager, Arc<RpcRouter>);
 
-		let params = $rpc_params.map(from_value).transpose().map_err(|ex| {
-			Error::RpcFailJsonParams {
-				rpc_method: rpc_fn_name.to_string(),
-				cause: ex.to_string(),
-			}
-		})?;
-
-		$rpc_fn($ctx, $mm, params).await.map(to_value)??
-	}};
-
-	// With Params
-	($rpc_fn:expr, $ctx:expr, $mm:expr, $rpc_params:expr) => {{
-		let rpc_fn_name = stringify!($rpc_fn);
-		let params = $rpc_params.ok_or(Error::RpcMissingParams {
-			rpc_method: rpc_fn_name.to_string(),
-		})?;
-		let params = from_value(params).map_err(|ex| Error::RpcFailJsonParams {
-			rpc_method: rpc_fn_name.to_string(),
-			cause: ex.to_string(),
-		})?;
-		$rpc_fn($ctx, $mm, params).await.map(to_value)??
-	}};
-
-	// Without Params
-	($rpc_fn:expr, $ctx:expr, $mm:expr) => {
-		$rpc_fn($ctx, $mm).await.map(to_value)??
-	};
-}
-
-async fn rpc_handler(
-	State(mm): State<ModelManager>,
+async fn rpc_axum_handler(
+	State(RpcStates(mm, rpc_router)): State<RpcStates>,
 	ctx: CtxW,
 	Json(rpc_req): Json<RpcRequest>,
 ) -> Response {
 	let ctx = ctx.0;
+
+	// -- Create the RPC Info
+	//    (will be set to the response.extensions)
 	let rpc_info = RpcInfo {
 		id: rpc_req.id.clone(),
 		method: rpc_req.method.clone(),
 	};
-	// -- Exec & Store RpcInfo in response
+	// -- Exec Rpc Route
+	let res = rpc_router
+		.call(&rpc_info.method, ctx, mm, rpc_req.params)
+		.await;
 
-	let mut res = _rpc_handler(ctx, mm, rpc_req).await.into_response();
-	res.extensions_mut().insert(rpc_info);
-	res
-}
-
-async fn _rpc_handler(
-	ctx: Ctx,
-	mm: ModelManager,
-	rpc_req: RpcRequest,
-) -> Result<Json<Value>> {
-	let RpcRequest {
-		id: rpc_id,
-		method: rpc_method,
-		params: rpc_params,
-	} = rpc_req;
-
-	debug!("{:<12} - _rpc_handler - method: {rpc_method}", "HANDLER");
-
-	let result_json = match rpc_method.as_str() {
-		// -- Task RPC
-		"create_task" => exec_rpc_fn!(create_task, ctx, mm, rpc_params),
-		"list_tasks" => {
-			exec_rpc_fn!(list_tasks, ctx, mm, (rpc_params, "optional"))
-		}
-		"update_task" => exec_rpc_fn!(update_task, ctx, mm, rpc_params),
-		"delete_task" => exec_rpc_fn!(delete_task, ctx, mm, rpc_params),
-
-		// -- Project RPC
-		"create_project" => exec_rpc_fn!(create_project, ctx, mm, rpc_params),
-		"list_projects" => {
-			exec_rpc_fn!(list_projects, ctx, mm, (rpc_params, "optional"))
-		}
-		"update_project" => exec_rpc_fn!(update_project, ctx, mm, rpc_params),
-		"delete_project" => exec_rpc_fn!(delete_project, ctx, mm, rpc_params),
-
-		// -- Fallback
-		_ => return Err(Error::RpcMethodUnknow(rpc_method)),
-	};
-	let body_response = json!({
-		"id": rpc_id,
-		"result": result_json,
+	// -- Build Rpc Success Response
+	let res = res.map(|v| {
+		let body_response = json!({
+			"id": rpc_info.id,
+			"result": v
+		});
+		Json(body_response)
 	});
-	Ok(Json(body_response))
+
+	// -- Create and Update Axum Response
+	let mut res = res.into_response();
+	res.extensions_mut().insert(rpc_info);
+
+	res
 }
