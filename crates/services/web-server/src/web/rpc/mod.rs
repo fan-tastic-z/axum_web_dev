@@ -1,6 +1,6 @@
 // region:    --- Modules
 
-use crate::web::{mw_auth::CtxW, Result};
+use crate::web::mw_auth::CtxW;
 use axum::{
 	extract::State,
 	response::{IntoResponse, Response},
@@ -13,7 +13,9 @@ use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use crate::web::rpc::infra::{IntoHandlerParams, RpcRouter};
+use crate::web::rpc::infra::{
+	IntoDefaultHandlerParams, IntoHandlerParams, RpcRouter,
+};
 
 mod infra;
 mod project_rpc;
@@ -59,16 +61,9 @@ pub struct ParamsList<F> {
 	list_options: Option<ListOptions>,
 }
 
-impl<F> IntoHandlerParams for ParamsList<F>
-where
-	F: DeserializeOwned + Send + Default,
+impl<D> IntoDefaultHandlerParams for ParamsList<D> where
+	D: DeserializeOwned + Send + Default
 {
-	fn into_handler_params(value: Option<Value>) -> Result<Self> {
-		match value {
-			Some(value) => Ok(serde_json::from_value(value)?),
-			None => Ok(Self::default()),
-		}
-	}
 }
 
 // endregion: --- RPC Types
