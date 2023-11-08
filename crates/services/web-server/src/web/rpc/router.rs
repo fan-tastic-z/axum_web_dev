@@ -45,7 +45,7 @@ impl RpcRouter {
 			}
 		}
 		// If nothing match, return error.
-		Err(Error::RpcMethodUnknow(method.to_string()))
+		Err(Error::RpcMethodUnknown(method.to_string()))
 	}
 }
 
@@ -77,7 +77,7 @@ macro_rules! rpc_router {
         {
             let mut router = RpcRouter::new();
             $(
-                router = router.add($fn_name.into_boxed_rpc_route(stringify!($fn_name)));
+                router = router.add($fn_name.into_boxed_route(stringify!($fn_name)));
             )+
             router
         }
@@ -97,11 +97,7 @@ pub trait RpcHandler<T, R>: Clone {
 	fn call(self, ctx: Ctx, mm: ModelManager, params: Option<Value>)
 		-> Self::Future;
 
-	fn into_rpc_route(self, name: &'static str) -> RpcRoute<Self, T, R> {
-		RpcRoute::new(self, name)
-	}
-
-	fn into_boxed_rpc_route(self, name: &'static str) -> Box<RpcRoute<Self, T, R>> {
+	fn into_boxed_route(self, name: &'static str) -> Box<RpcRoute<Self, T, R>> {
 		Box::new(RpcRoute::new(self, name))
 	}
 }
@@ -111,8 +107,8 @@ pub trait RpcHandler<T, R>: Clone {
 /// The default implementation below will fail if the value is `None`.
 /// For custom behavior, users can implement their own `into_handler_params`
 /// method.
-pub trait IntoHandlerParams: DeserializeOwned + Send {
-	fn into_handler_params(value: Option<Value>) -> Result<Self> {
+pub trait IntoParams: DeserializeOwned + Send {
+	fn into_params(value: Option<Value>) -> Result<Self> {
 		match value {
 			Some(value) => Ok(serde_json::from_value(value)?),
 			None => Err(Error::RpcIntoParamsMissing),
@@ -121,13 +117,13 @@ pub trait IntoHandlerParams: DeserializeOwned + Send {
 }
 
 /// Marker trait with a blanket implementation that
-pub trait IntoDefaultHandlerParams: DeserializeOwned + Send + Default {}
+pub trait IntoDefaultParams: DeserializeOwned + Send + Default {}
 
-impl<P> IntoHandlerParams for P
+impl<P> IntoParams for P
 where
-	P: IntoDefaultHandlerParams,
+	P: IntoDefaultParams,
 {
-	fn into_handler_params(value: Option<Value>) -> Result<Self> {
+	fn into_params(value: Option<Value>) -> Result<Self> {
 		match value {
 			Some(value) => Ok(serde_json::from_value(value)?),
 			None => Ok(Self::default()),
@@ -147,7 +143,7 @@ where
 		self,
 		ctx: Ctx,
 		mm: ModelManager,
-		params: Option<Value>,
+		_params: Option<Value>,
 	) -> Self::Future {
 		Box::pin(async move {
 			let result = self(ctx, mm).await?;
@@ -158,7 +154,7 @@ where
 
 impl<F, Fut, T, R> RpcHandler<(T,), R> for F
 where
-	T: IntoHandlerParams,
+	T: IntoParams,
 	F: FnOnce(Ctx, ModelManager, T) -> Fut + Clone + Send + 'static,
 	R: Serialize,
 	Fut: Future<Output = Result<R>> + Send,
@@ -175,7 +171,7 @@ where
 			// NOTE: For now, we require the params not to be None
 			//       when the handler takes the params argument.
 			// TODO: Needs to find a way to support Option<T> as handler params.
-			let param = T::into_handler_params(params_value)?;
+			let param = T::into_params(params_value)?;
 
 			let result = self(ctx, mm, param).await?;
 			Ok(serde_json::to_value(result)?)

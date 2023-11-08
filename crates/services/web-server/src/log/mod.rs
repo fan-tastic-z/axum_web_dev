@@ -1,5 +1,3 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use crate::{
 	web::{rpc::RpcInfo, ReqStamp},
 	Result,

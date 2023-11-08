@@ -29,9 +29,7 @@ pub enum Error {
 	Token(token::Error),
 
 	// -- RPC
-	RpcMethodUnknow(String),
-	RpcMissingParams { rpc_method: String },
-	RpcFailJsonParams { rpc_method: String, cause: String },
+	RpcMethodUnknown(String),
 	RpcIntoParamsMissing,
 
 	// -- External Modules

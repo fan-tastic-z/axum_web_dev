@@ -8,24 +8,22 @@ use axum::{
 	Json, Router,
 };
 use lib_core::model::ModelManager;
-use modql::filter::ListOptions;
-use serde::{de::DeserializeOwned, Deserialize};
+
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use crate::web::rpc::infra::{
-	IntoDefaultHandlerParams, IntoHandlerParams, RpcRouter,
-};
-
-mod infra;
+mod params;
 mod project_rpc;
+mod router;
 mod task_rpc;
+pub use params::*;
+
+use crate::web::rpc::router::RpcRouter;
 
 // endregion: --- Modules
 
-// region:    --- RPC Types
-
-/// JSON-RPC Request Body
+/// The raw JSON-RPC request object, serving as the foundation for RPC routing.
 #[derive(Deserialize)]
 struct RpcRequest {
 	id: Option<Value>,
@@ -33,54 +31,16 @@ struct RpcRequest {
 	params: Option<Value>,
 }
 
-#[derive(Deserialize)]
-pub struct ParamsForCreate<D> {
-	data: D,
-}
-
-impl<D> IntoHandlerParams for ParamsForCreate<D> where D: DeserializeOwned + Send {}
-
-#[derive(Deserialize)]
-pub struct ParamsForUpdate<D> {
-	id: i64,
-	data: D,
-}
-
-impl<D> IntoHandlerParams for ParamsForUpdate<D> where D: DeserializeOwned + Send {}
-
-#[derive(Deserialize)]
-pub struct ParamsIded {
-	id: i64,
-}
-
-impl IntoHandlerParams for ParamsIded {}
-
-#[derive(Deserialize, Default)]
-pub struct ParamsList<F> {
-	filter: Option<F>,
-	list_options: Option<ListOptions>,
-}
-
-impl<D> IntoDefaultHandlerParams for ParamsList<D> where
-	D: DeserializeOwned + Send + Default
-{
-}
-
-// endregion: --- RPC Types
-
 pub fn routes(mm: ModelManager) -> Router {
 	// Build the combined RpcRouter.
-	let mut rpc_router = RpcRouter::new()
+	let rpc_router = RpcRouter::new()
 		.append(task_rpc::rpc_router())
 		.append(project_rpc::rpc_router());
-
-	// Build the Axum States needed for this axum Router.
-	let rpc_states = RpcStates(mm, Arc::new(rpc_router));
 
 	// Build the Acum Router for '/rpc'
 	Router::new()
 		.route("/rpc", post(rpc_axum_handler))
-		.with_state(rpc_states)
+		.with_state((mm, Arc::new(rpc_router)))
 }
 
 /// RPC basic information containing the id and method for additional logging purposes.
@@ -94,7 +54,7 @@ pub struct RpcInfo {
 struct RpcStates(ModelManager, Arc<RpcRouter>);
 
 async fn rpc_axum_handler(
-	State(RpcStates(mm, rpc_router)): State<RpcStates>,
+	State((mm, rpc_router)): State<(ModelManager, Arc<RpcRouter>)>,
 	ctx: CtxW,
 	Json(rpc_req): Json<RpcRequest>,
 ) -> Response {

@@ -10,7 +10,7 @@ use crate::web::Result;
 
 use super::{ParamsForCreate, ParamsForUpdate, ParamsIded, ParamsList};
 use crate::rpc_router;
-use crate::web::rpc::infra::{RpcHandler, RpcRouter};
+use crate::web::rpc::router::{RpcHandler, RpcRouter};
 
 pub fn rpc_router() -> RpcRouter {
 	rpc_router!(create_task, update_task, list_tasks, delete_task)
