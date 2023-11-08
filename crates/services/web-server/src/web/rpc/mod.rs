@@ -53,22 +53,20 @@ pub struct ParamsIded {
 
 impl IntoHandlerParams for ParamsIded {}
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct ParamsList<F> {
 	filter: Option<F>,
 	list_options: Option<ListOptions>,
 }
 
-impl<F> IntoHandlerParams for ParamsList<F> where F: DeserializeOwned + Send {}
-
-impl<F> IntoHandlerParams for Option<ParamsList<F>>
+impl<F> IntoHandlerParams for ParamsList<F>
 where
-	F: DeserializeOwned + Send,
+	F: DeserializeOwned + Send + Default,
 {
 	fn into_handler_params(value: Option<Value>) -> Result<Self> {
 		match value {
 			Some(value) => Ok(serde_json::from_value(value)?),
-			None => Ok(None),
+			None => Ok(Self::default()),
 		}
 	}
 }
