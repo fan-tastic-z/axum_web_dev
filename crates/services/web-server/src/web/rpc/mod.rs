@@ -47,8 +47,8 @@ pub struct RpcInfo {
 pub fn routes(rpc_state: RpcState) -> Router {
 	// Build the combined RpcRouter.
 	let rpc_router = RpcRouter::new()
-		.append(task_rpc::rpc_router())
-		.append(project_rpc::rpc_router());
+		.extend(task_rpc::rpc_router())
+		.extend(project_rpc::rpc_router());
 
 	// Build the Acum Router for '/rpc'
 	Router::new()
