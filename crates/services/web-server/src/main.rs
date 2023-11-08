@@ -6,7 +6,8 @@ use crate::web::{
 	mw_auth::{mw_ctx_require, mw_ctx_resolve},
 	mw_req_stamp::mw_req_stamp,
 	mw_res_map::mw_reponse_map,
-	routes_login, routes_static, rpc,
+	routes_login, routes_static,
+	rpc::{self, RpcState},
 };
 
 pub use self::error::{Error, Result};
@@ -34,9 +35,11 @@ async fn main() -> Result<()> {
 
 	// Initialze ModelManager.
 	let mm = ModelManager::new().await?;
+	// -- Define Routes
+	let rpc_state = RpcState { mm: mm.clone() };
 
 	let routes_rpc =
-		rpc::routes(mm.clone()).route_layer(middleware::from_fn(mw_ctx_require));
+		rpc::routes(rpc_state).route_layer(middleware::from_fn(mw_ctx_require));
 
 	let routes_all = Router::new()
 		.merge(routes_login::routes(mm.clone()))

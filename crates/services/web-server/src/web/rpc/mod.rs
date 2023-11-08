@@ -64,13 +64,11 @@ impl From<RpcState> for ModelManager {
 
 // endregion: --- RpcState
 
-pub fn routes(mm: ModelManager) -> Router {
+pub fn routes(rpc_state: RpcState) -> Router {
 	// Build the combined RpcRouter.
 	let rpc_router = RpcRouter::new()
 		.append(task_rpc::rpc_router())
 		.append(project_rpc::rpc_router());
-
-	let rpc_state = RpcState { mm };
 
 	// Build the Acum Router for '/rpc'
 	Router::new()
