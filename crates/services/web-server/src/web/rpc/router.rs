@@ -13,7 +13,7 @@ use std::pin::Pin;
 // region:    --- RpcRouter
 
 pub struct RpcRouter {
-	pub route_by_name: HashMap<&'static str, Box<dyn RpcRouteTrait>>,
+	route_by_name: HashMap<&'static str, Box<dyn RpcRouteTrait>>,
 }
 
 impl RpcRouter {
@@ -28,7 +28,7 @@ impl RpcRouter {
 		self
 	}
 
-	pub fn extend(mut self, mut other_router: RpcRouter) -> Self {
+	pub fn extend(mut self, other_router: RpcRouter) -> Self {
 		self.route_by_name.extend(other_router.route_by_name);
 		self
 	}
