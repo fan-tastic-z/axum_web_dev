@@ -1,57 +1,37 @@
 use crate::model::store;
 use crate::pwd;
+use derive_more::From;
 use serde::Serialize;
 use serde_with::{serde_as, DisplayFromStr};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[serde_as]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, From)]
 pub enum Error {
-	EntityNotFound { entity: &'static str, id: i64 },
-	ListLimitOverMax { max: i64, actual: i64 },
+	EntityNotFound {
+		entity: &'static str,
+		id: i64,
+	},
+	ListLimitOverMax {
+		max: i64,
+		actual: i64,
+	},
 
 	// -- Modules
+	#[from]
 	Pwd(pwd::Error),
+	#[from]
 	Store(store::Error),
 
 	// -- Externals
+	#[from]
 	SeaQuery(#[serde_as(as = "DisplayFromStr")] sea_query::error::Error),
+	#[from]
 	Sqlx(#[serde_as(as = "DisplayFromStr")] sqlx::Error),
+	#[from]
 	ModqlIntoSea(#[serde_as(as = "DisplayFromStr")] modql::filter::IntoSeaError),
 }
-
-// region:    --- Froms
-impl From<pwd::Error> for Error {
-	fn from(val: pwd::Error) -> Self {
-		Self::Pwd(val)
-	}
-}
-
-impl From<store::Error> for Error {
-	fn from(val: store::Error) -> Self {
-		Self::Store(val)
-	}
-}
-
-impl From<sea_query::error::Error> for Error {
-	fn from(val: sea_query::error::Error) -> Self {
-		Self::SeaQuery(val)
-	}
-}
-
-impl From<sqlx::Error> for Error {
-	fn from(val: sqlx::Error) -> Self {
-		Self::Sqlx(val)
-	}
-}
-
-impl From<modql::filter::IntoSeaError> for Error {
-	fn from(val: modql::filter::IntoSeaError) -> Self {
-		Self::ModqlIntoSea(val)
-	}
-}
-// endregion: --- Froms
 
 // region:    --- Error Boilerplate
 impl core::fmt::Display for Error {

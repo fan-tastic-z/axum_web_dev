@@ -1,23 +1,17 @@
 use crate::pwd::scheme;
+use derive_more::From;
 use serde::Serialize;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, From)]
 pub enum Error {
 	PwdWithSchemeParseFail,
 
 	// -- Modules
+	#[from]
 	Scheme(scheme::Error),
 }
-
-// region:    --- Froms
-impl From<scheme::Error> for Error {
-	fn from(val: scheme::Error) -> Self {
-		Self::Scheme(val)
-	}
-}
-// endregion: --- Froms
 
 // region:    --- Error Boilerplate
 impl core::fmt::Display for Error {
