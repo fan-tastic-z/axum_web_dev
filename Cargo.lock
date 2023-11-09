@@ -1258,9 +1258,9 @@ dependencies = [
 
 [[package]]
 name = "modql"
-version = "0.3.0"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4174deabcee54db4dd01ad99c8a211b810f893be2949a36c96663c5ede68c03d"
+checksum = "556a17a3729e7695f269b35a7f064e073dc5806e8d6c38f0de6227f8ab36fc24"
 dependencies = [
  "modql-macros",
  "sea-query",

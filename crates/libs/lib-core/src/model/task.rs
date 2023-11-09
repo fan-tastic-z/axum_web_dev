@@ -35,6 +35,7 @@ pub struct TaskForUpdate {
 
 #[derive(FilterNodes, Deserialize, Default, Debug)]
 pub struct TaskFilter {
+	id: Option<OpValsInt64>,
 	project_id: Option<OpValsInt64>,
 	title: Option<OpValsString>,
 	done: Option<OpValsBool>,
@@ -72,7 +73,7 @@ impl TaskBmc {
 	pub async fn list(
 		ctx: &Ctx,
 		mm: &ModelManager,
-		filter: Option<TaskFilter>,
+		filter: Option<Vec<TaskFilter>>,
 		list_options: Option<ListOptions>,
 	) -> Result<Vec<Task>> {
 		base::list::<Self, _, _>(ctx, mm, filter, list_options).await
@@ -179,11 +180,11 @@ mod tests {
 		_dev_utils::seed_tasks(&ctx, &mm, fx_project_id, fx_titles).await?;
 
 		// -- Exec
-		let filter: TaskFilter = TaskFilter {
+		let filter = TaskFilter {
 			project_id: Some(fx_project_id.into()),
 			..Default::default()
 		};
-		let tasks = TaskBmc::list(&ctx, &mm, Some(filter), None).await?;
+		let tasks = TaskBmc::list(&ctx, &mm, Some(vec![filter]), None).await?;
 
 		// -- Check
 		assert_eq!(tasks.len(), 2, "number of seeded tasks.");
@@ -221,7 +222,7 @@ mod tests {
 			),
 			..Default::default()
 		};
-		let tasks = TaskBmc::list(&ctx, &mm, Some(filter), None).await?;
+		let tasks = TaskBmc::list(&ctx, &mm, Some(vec![filter]), None).await?;
 
 		// -- Check
 		assert_eq!(tasks.len(), 2);
@@ -263,7 +264,7 @@ mod tests {
 			"order_bys": "!title"
 		}))?;
 		let tasks =
-			TaskBmc::list(&ctx, &mm, Some(filter), Some(list_options)).await?;
+			TaskBmc::list(&ctx, &mm, Some(vec![filter]), Some(list_options)).await?;
 
 		// -- Check
 		let titles: Vec<String> =
@@ -350,7 +351,7 @@ mod tests {
 		let filter_json = json! ({
 			"ctime": {"$gt": time_marker}, // time in Rfc3339
 		});
-		let filter = serde_json::from_value(filter_json)?;
+		let filter = vec![serde_json::from_value(filter_json)?];
 		let tasks = TaskBmc::list(&ctx, &mm, Some(filter), None).await?;
 
 		// -- Check

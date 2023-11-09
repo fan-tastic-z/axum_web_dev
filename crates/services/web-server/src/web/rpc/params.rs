@@ -3,6 +3,7 @@ use modql::filter::ListOptions;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::Value;
+use serde_with::{serde_as, OneOrMany};
 
 /// Params structure for any RPC Create call.
 #[derive(Deserialize)]
@@ -29,9 +30,14 @@ pub struct ParamsIded {
 impl IntoParams for ParamsIded {}
 
 /// Params structure for any RPC List call.
+#[serde_as]
 #[derive(Deserialize, Default)]
-pub struct ParamsList<F> {
-	pub filter: Option<F>,
+pub struct ParamsList<F>
+where
+	F: DeserializeOwned,
+{
+	#[serde_as(deserialize_as = "Option<OneOrMany<_>>")]
+	pub filters: Option<Vec<F>>,
 	pub list_options: Option<ListOptions>,
 }
 
