@@ -1,6 +1,6 @@
 use lib_base::time::now_utc;
 use modql::field::{Field, Fields, HasFields};
-use modql::filter::{FilterGroups, IntoSeaError, ListOptions};
+use modql::filter::{FilterGroups, ListOptions};
 use modql::SIden;
 use sea_query::{
 	Condition, Expr, Iden, IntoIden, PostgresQueryBuilder, Query, TableRef,
@@ -31,6 +31,14 @@ pub trait DbBmc {
 
 	fn table_ref() -> TableRef {
 		TableRef::Table(SIden(Self::TABLE).into_iden())
+	}
+}
+
+fn default_list_options() -> ListOptions {
+	ListOptions {
+		limit: Some(1000),
+		offset: None,
+		order_bys: Some("id".into()),
 	}
 }
 
@@ -116,9 +124,8 @@ where
 	}
 
 	// list options
-	if let Some(list_options) = list_options {
-		list_options.apply_to_sea_query(&mut query);
-	}
+	let list_options = list_options.unwrap_or_else(default_list_options);
+	list_options.apply_to_sea_query(&mut query);
 
 	// -- Execute the query
 	let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
