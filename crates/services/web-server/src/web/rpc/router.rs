@@ -12,8 +12,12 @@ use std::pin::Pin;
 
 // region:    --- RpcRouter
 
+/// RpcRouter holds the method_name to handler constructs and implements the `call`
+/// method, which calls the appropriate handler matching the method_name.
+///
+/// RpcRouter can be extended with other RpcRouters for composability.
 pub struct RpcRouter {
-	route_by_name: HashMap<&'static str, Box<dyn RpcRouteTrait>>,
+	route_by_name: HashMap<&'static str, Box<dyn RpcHandlerWrapperTrait>>,
 }
 
 impl RpcRouter {
@@ -23,11 +27,15 @@ impl RpcRouter {
 		}
 	}
 
-	pub fn add(mut self, erased_route: Box<dyn RpcRouteTrait>) -> Self {
-		self.route_by_name.insert(erased_route.name(), erased_route);
+	pub fn add(
+		mut self,
+		name: &'static str,
+		erased_route: Box<dyn RpcHandlerWrapperTrait>,
+	) -> Self {
+		self.route_by_name.insert(name, erased_route);
 		self
 	}
-
+	
 	pub fn extend(mut self, other_router: RpcRouter) -> Self {
 		self.route_by_name.extend(other_router.route_by_name);
 		self
@@ -64,10 +72,10 @@ impl RpcRouter {
 /// Is equivalent to:
 /// ```
 /// RpcRouter::new()
-///     .add(create_project.into_boxed_rpc_route("create_project"))
-///     .add(list_projects.into_boxed_rpc_route("list_projects"))
-///     .add(update_project.into_boxed_rpc_route("update_project"))
-///     .add(delete_project.into_boxed_rpc_route("delete_project"))
+///     .add("create_project", create_project.into_box())
+///     .add("list_projects", list_projects.into_box())
+///     .add("update_project", update_project.into_box())
+///     .add("delete_project", delete_project.into_box())
 /// ```
 ///
 #[macro_export]
@@ -76,7 +84,7 @@ macro_rules! rpc_router {
         {
             let mut router = RpcRouter::new();
             $(
-                router = router.add($fn_name.into_boxed_route(stringify!($fn_name)));
+                router = router.add(stringify!($fn_name), $fn_name.into_box());
             )+
             router
         }
@@ -109,8 +117,11 @@ pub trait RpcHandler<S, P, R>: Clone {
 		params: Option<Value>,
 	) -> Self::Future;
 
-	fn into_boxed_route(self, name: &'static str) -> Box<RpcRoute<Self, S, P, R>> {
-		Box::new(RpcRoute::new(self, name))
+	/// Convenient method that turns this handler into a Boxed RpcHandlerWrapper
+	/// which can then be placed in a container of `Box<dyn RpcHandlerWrapperTrait>`
+	/// for dynamic dispatch.
+	fn into_box(self) -> Box<RpcHandlerWrapper<Self, S, P, R>> {
+		Box::new(RpcHandlerWrapper::new(self))
 	}
 }
 
@@ -199,33 +210,28 @@ where
 
 // endregion: --- RpcHandler
 
-// region:    --- RpcHandlerRoute
+// region:    --- RpcHandlerWrapper
 
-/// `RpcRoute` is a wrapper for `RpcHandler` that contains:
-/// - `handler` - the actual `RpcHandler` function.
-/// - `name` - the corresponding JSON-RPC method name to which this handler responds.
-///
-/// `RpcRoute` implements `RpcRouteTrait` for type erasure, facilitating dynamic dispatch.
+/// `RpcHanlderWrapper` is a `RpcHandler` wrapper which implements
+/// `RpcHandlerWrapperTrait` for type erasure, enabling dynamic dispatch.
 #[derive(Clone)]
-pub struct RpcRoute<H, S, P, R> {
-	name: &'static str,
+pub struct RpcHandlerWrapper<H, S, P, R> {
 	handler: H,
 	_marker: PhantomData<(S, P, R)>,
 }
 
-// Constructor Impl
-impl<H, S, P, R> RpcRoute<H, S, P, R> {
-	pub fn new(handler: H, name: &'static str) -> Self {
+// Constructor
+impl<H, S, P, R> RpcHandlerWrapper<H, S, P, R> {
+	pub fn new(handler: H) -> Self {
 		Self {
-			name,
 			handler,
 			_marker: PhantomData,
 		}
 	}
 }
 
-// Caller Impl
-impl<H, S, P, R> RpcRoute<H, S, P, R>
+// Call Impl
+impl<H, S, P, R> RpcHandlerWrapper<H, S, P, R>
 where
 	H: RpcHandler<S, P, R> + Send + Sync + 'static,
 {
@@ -235,18 +241,16 @@ where
 		rpc_state: RpcState,
 		params: Option<Value>,
 	) -> H::Future {
-		// Note: Since handler is a FnOnce,
-		//       we can use it only once, so we clone it.
+		// Note: Since handler is a FnOnce, we can use it only once, so we clone it.
+		//       This is likely optimized by the compiler.
 		let handler = self.handler.clone();
 		RpcHandler::call(handler, ctx, rpc_state, params)
 	}
 }
 
-/// `RpcRouteTrait` enables `RpcRoute` to become a trait object,
+/// `RpcHandlerWrapperTrait` enables `RpcHandlerWrapper` to become a trait object,
 /// allowing for dynamic dispatch.
-pub trait RpcRouteTrait: Send + Sync {
-	fn name(&self) -> &'static str;
-
+pub trait RpcHandlerWrapperTrait: Send + Sync {
 	fn call(
 		&self,
 		ctx: Ctx,
@@ -255,20 +259,13 @@ pub trait RpcRouteTrait: Send + Sync {
 	) -> PinFutureValue;
 }
 
-/// `RpcRouteTrait` for `RpcRoute`.
-/// Note: This enables `RpcRouter` to contain `rpc_handlers: Vec<Box<dyn RpcRouteTrait>>`
-///       for dynamic dispatch.
-impl<H, S, P, R> RpcRouteTrait for RpcRoute<H, S, P, R>
+impl<H, S, P, R> RpcHandlerWrapperTrait for RpcHandlerWrapper<H, S, P, R>
 where
 	H: RpcHandler<S, P, R> + Clone + Send + Sync + 'static,
 	S: Send + Sync,
 	P: Send + Sync,
 	R: Send + Sync,
 {
-	fn name(&self) -> &'static str {
-		self.name
-	}
-
 	fn call(
 		&self,
 		ctx: Ctx,
@@ -279,4 +276,4 @@ where
 	}
 }
 
-// endregion: --- RpcHandlerRoute
+// endregion: --- RpcHandlerWrapper
